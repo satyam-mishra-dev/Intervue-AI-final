@@ -3,7 +3,7 @@ import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import InterviewCard from "@/components/InterviewCard";
-
+import { dummyInterviews }  from "@/constants/index";
 import { getCurrentUser } from "@/lib/actions/auth.action";
 import {
   getInterviewsByUserId,
@@ -47,8 +47,7 @@ async function Home() {
       <section className="flex flex-col gap-6 mt-8">
         <h2>Your Interviews</h2>
 
-        <div className="interviews-section">
-          {hasPastInterviews ? (
+        <div className="interviews-section">          {hasPastInterviews ? (
             userInterviews?.map((interview) => (
               <InterviewCard
                 key={interview.id}
@@ -61,7 +60,17 @@ async function Home() {
               />
             ))
           ) : (
-            <p>You haven&apos;t taken any interviews yet</p>
+            dummyInterviews?.map((interview) => (
+              <InterviewCard
+                key={interview.id}
+                userId={user?.id}
+                interviewId={interview.id}
+                role={interview.role}
+                type={interview.type}
+                techstack={interview.techstack}
+                createdAt={interview.createdAt}
+              />
+            ))
           )}
         </div>
       </section>
@@ -82,8 +91,17 @@ async function Home() {
                 createdAt={interview.createdAt}
               />
             ))
-          ) : (
-            <p>There are no interviews available</p>
+          ) : (            dummyInterviews?.map((interview) => (
+              <InterviewCard
+                key={interview.id}
+                userId={user?.id}
+                interviewId={interview.id}
+                role={interview.role}
+                type={interview.type}
+                techstack={interview.techstack}
+                createdAt={interview.createdAt}
+              />
+            ))
           )}
         </div>
       </section>
