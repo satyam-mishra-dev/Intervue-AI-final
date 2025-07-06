@@ -5,13 +5,17 @@ import { db } from "@/firebase/admin";
 import { getRandomInterviewCover } from "@/lib/utils";
 
 export async function POST(request: Request) {
-  const { type, role, level, techstack, amount, userid } = await request.json();
+  const { type, role, level, techstack, amount, userid, conversation } = await request.json();
 
   try {
-    const { text: questions } = await generateText({
-      model: google("gemini-2.0-flash-001"),
-      prompt: `Prepare questions for a job interview.
-        The job role is ${role}.
+    // If we have conversation context, use it to generate more relevant questions
+    let prompt = `Prepare questions for a job interview.`;
+    
+    if (conversation) {
+      prompt += `\n\nBased on this conversation context:\n${conversation}\n\n`;
+    }
+    
+    prompt += `The job role is ${role}.
         The job experience level is ${level}.
         The tech stack used in the job is: ${techstack}.
         The focus between behavioural and technical questions should lean towards: ${type}.
@@ -22,7 +26,11 @@ export async function POST(request: Request) {
         ["Question 1", "Question 2", "Question 3"]
         
         Thank you! <3
-    `,
+    `;
+
+    const { text: questions } = await generateText({
+      model: google("gemini-2.0-flash-001"),
+      prompt: prompt,
     });
 
     const interview = {

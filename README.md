@@ -84,6 +84,8 @@ Make sure you have the following installed on your machine:
 - [Git](https://git-scm.com/)
 - [Node.js](https://nodejs.org/en)
 - [npm](https://www.npmjs.com/) (Node Package Manager)
+- [Python 3.8+](https://www.python.org/downloads/) (for eye tracking)
+- Webcam access
 
 **Cloning the Repository**
 
@@ -99,6 +101,17 @@ Install the project dependencies using npm:
 ```bash
 npm install
 ```
+
+**Eye Tracking Setup (Optional but Recommended)**
+
+The project includes eye tracking functionality for interview monitoring. To set it up:
+
+```bash
+cd backend
+python setup.py
+```
+
+This will install Python dependencies and verify your setup. See `backend/README.md` for detailed instructions.
 
 **Set Up Environment Variables**
 
