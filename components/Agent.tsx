@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
-import { interviewer } from "@/constants";
+import { interviewer, dummyInterviews } from "@/constants";
 import { createFeedback } from "@/lib/actions/general.action";
 import WebCamStream from "@/components/WebCamStream"; // ✅ Corrected import
 
@@ -37,6 +37,30 @@ const Agent = ({
   const [lastMessage, setLastMessage] = useState<string>("");
   const [vapiError, setVapiError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Check VAPI configuration on component mount
+  useEffect(() => {
+    const checkVAPIConfig = () => {
+      const vapiToken = process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN;
+      const workflowId = process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID;
+      
+      if (!vapiToken || !workflowId) {
+        setVapiError('VAPI is not configured. Please set up your environment variables. See VAPI_SETUP_GUIDE.md for instructions.');
+        return false;
+      }
+      
+      if (vapiToken === 'your_vapi_web_token_here' || workflowId === 'your_vapi_workflow_id_here') {
+        setVapiError('VAPI credentials are not set. Please update your .env.local file with actual VAPI credentials.');
+        return false;
+      }
+      
+      return true;
+    };
+    
+    if (!checkVAPIConfig()) {
+      return;
+    }
+  }, []);
 
   useEffect(() => {
     // Check if we're in a browser environment and have mediaDevices support
@@ -113,8 +137,15 @@ const Agent = ({
 
     const handleGenerateFeedback = async () => {
       try {
+        // Check if we have a valid interview ID
+        if (!interviewId) {
+          console.log("⚠️ No interview ID found, using demo interview for feedback");
+          await handleFallbackToDemoInterview();
+          return;
+        }
+
         const { success, feedbackId: id } = await createFeedback({
-          interviewId: interviewId!,
+          interviewId: interviewId,
           userId: userId!,
           transcript: messages,
           feedbackId,
@@ -123,11 +154,14 @@ const Agent = ({
         if (success && id) {
           router.push(`/interview/${interviewId}/feedback`);
         } else {
-          console.error("Error saving feedback");
-          router.push("/");
+          console.error("Error saving feedback, trying demo fallback");
+          // If feedback generation fails, try demo fallback
+          await handleFallbackToDemoInterview();
         }
       } catch (error: any) {
         console.error("Feedback generation failed:", error);
+        // If any error occurs, try demo fallback
+        await handleFallbackToDemoInterview();
       }
     };
 
@@ -173,11 +207,159 @@ const Agent = ({
           router.push("/");
         } else {
           console.error("❌ Interview generation failed:", data.error);
-          alert("Failed to generate interview. Please try again.");
+          // Fallback to demo interview for feedback
+          await handleFallbackToDemoInterview();
         }
       } catch (error: any) {
         console.error("❌ Interview generation error:", error);
-        alert("Failed to generate interview. Please try again.");
+        // Fallback to demo interview for feedback
+        await handleFallbackToDemoInterview();
+      }
+    };
+
+    const handleFallbackToDemoInterview = async () => {
+      try {
+        console.log("🔄 Using demo interview for feedback generation...");
+        
+        // Try to extract some context from the conversation
+        const conversationText = messages.map(msg => msg.content).join(' ');
+        let extractedRole = "Software Developer";
+        let extractedLevel = "Junior";
+        let extractedTech = ["JavaScript", "React", "Node.js"];
+        
+        // Simple keyword extraction from conversation
+        if (conversationText.toLowerCase().includes('frontend') || conversationText.toLowerCase().includes('react')) {
+          extractedRole = "Frontend Developer";
+          extractedTech = ["React", "JavaScript", "HTML", "CSS"];
+        } else if (conversationText.toLowerCase().includes('backend') || conversationText.toLowerCase().includes('node')) {
+          extractedRole = "Backend Developer";
+          extractedTech = ["Node.js", "JavaScript", "Express", "MongoDB"];
+        } else if (conversationText.toLowerCase().includes('full stack') || conversationText.toLowerCase().includes('fullstack')) {
+          extractedRole = "Full Stack Developer";
+          extractedTech = ["React", "Node.js", "JavaScript", "MongoDB"];
+        }
+        
+        if (conversationText.toLowerCase().includes('senior') || conversationText.toLowerCase().includes('experienced')) {
+          extractedLevel = "Senior";
+        } else if (conversationText.toLowerCase().includes('mid') || conversationText.toLowerCase().includes('intermediate')) {
+          extractedLevel = "Mid-level";
+        }
+        
+        // Generate appropriate questions based on the extracted role
+        const getQuestionsForRole = (role: string, level: string) => {
+          const baseQuestions = [
+            "Tell me about your background and experience",
+            "What motivates you in your work?",
+            "How do you handle challenges and setbacks?",
+            "Describe a project you're particularly proud of",
+            "How do you stay updated with industry trends?"
+          ];
+          
+          const technicalQuestions = {
+            "Frontend Developer": [
+              "How do you approach responsive design?",
+              "What's your experience with modern JavaScript frameworks?",
+              "How do you optimize frontend performance?",
+              "Describe your CSS architecture approach",
+              "How do you handle cross-browser compatibility?"
+            ],
+            "Backend Developer": [
+              "How do you design scalable APIs?",
+              "What's your experience with databases?",
+              "How do you handle security in your applications?",
+              "Describe your testing strategy",
+              "How do you monitor and debug production issues?"
+            ],
+            "Full Stack Developer": [
+              "How do you coordinate between frontend and backend?",
+              "What's your deployment strategy?",
+              "How do you handle data flow between client and server?",
+              "Describe your full-stack architecture decisions",
+              "How do you ensure consistency across the stack?"
+            ],
+            "Software Developer": [
+              "What programming languages are you most comfortable with?",
+              "How do you approach problem-solving?",
+              "Describe your development workflow",
+              "How do you collaborate with team members?",
+              "What's your experience with version control?"
+            ]
+          };
+          
+          const roleQuestions = technicalQuestions[role as keyof typeof technicalQuestions] || technicalQuestions["Software Developer"];
+          
+          // Mix behavioral and technical questions
+          return [...baseQuestions.slice(0, 3), ...roleQuestions.slice(0, 2)];
+        };
+
+        // Get a random demo interview as fallback
+        const getRandomDemoInterview = () => {
+          const randomIndex = Math.floor(Math.random() * dummyInterviews.length);
+          const demo = dummyInterviews[randomIndex];
+          return {
+            ...demo,
+            id: `demo-${Date.now()}-${randomIndex}`,
+            userId: userId,
+            finalized: true,
+            createdAt: new Date().toISOString(),
+          };
+        };
+        
+        // Create a demo interview using extracted data or fallback to random demo
+        const demoInterview = conversationText.length > 10 ? {
+          id: `demo-${Date.now()}`, // Generate a unique demo ID
+          userId: userId,
+          role: extractedRole,
+          type: "Mixed",
+          techstack: extractedTech,
+          level: extractedLevel,
+          questions: getQuestionsForRole(extractedRole, extractedLevel),
+          finalized: true,
+          coverImage: "/covers/facebook.png",
+          createdAt: new Date().toISOString(),
+        } : getRandomDemoInterview();
+
+        // Save the demo interview to Firebase
+        const saveResponse = await fetch("/api/save-demo-interview", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(demoInterview),
+        });
+
+        if (saveResponse.ok) {
+          const saveData = await saveResponse.json();
+          if (saveData.success) {
+            console.log("✅ Demo interview saved successfully");
+            
+            // Generate feedback using the demo interview
+            const { success, feedbackId: id } = await createFeedback({
+              interviewId: saveData.interviewId,
+              userId: userId!,
+              transcript: messages,
+              feedbackId,
+            });
+
+            if (success && id) {
+              const roleText = conversationText.length > 10 ? `${extractedLevel} ${extractedRole}` : "practice";
+              alert(`Interview generation failed, but we've created a ${roleText} demo interview for you to practice with! Redirecting to feedback...`);
+              router.push(`/interview/${saveData.interviewId}/feedback`);
+            } else {
+              console.error("Error generating feedback for demo interview");
+              alert("We couldn't generate feedback. Please try again later.");
+              router.push("/");
+            }
+          } else {
+            throw new Error("Failed to save demo interview");
+          }
+        } else {
+          throw new Error("Failed to save demo interview");
+        }
+      } catch (error: any) {
+        console.error("❌ Demo interview fallback failed:", error);
+        alert("We couldn't generate an interview or feedback. Please try again later.");
+        router.push("/");
       }
     };
 
@@ -185,7 +367,7 @@ const Agent = ({
       if (type === "generate") {
         handleGenerateInterview();
       } else {
-        handleGenerateFeedback();
+      handleGenerateFeedback();
       }
     }
   }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
@@ -336,9 +518,23 @@ const Agent = ({
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           <p className="font-bold">VAPI Error:</p>
           <p className="text-sm">{vapiError}</p>
-          <p className="text-sm mt-2">
-            Please ensure you have granted camera and microphone permissions to this site.
-          </p>
+          {vapiError.includes('not configured') || vapiError.includes('not set') ? (
+            <div className="mt-2">
+              <p className="text-sm font-semibold">Quick Fix:</p>
+              <ol className="text-sm mt-1 ml-4 list-decimal">
+                <li>Get VAPI credentials from <a href="https://vapi.ai" target="_blank" rel="noopener noreferrer" className="underline">vapi.ai</a></li>
+                <li>Update your <code className="bg-gray-200 px-1 rounded">.env.local</code> file</li>
+                <li>Restart your development server</li>
+              </ol>
+              <p className="text-sm mt-2">
+                📖 See <code className="bg-gray-200 px-1 rounded">VAPI_SETUP_GUIDE.md</code> for detailed instructions
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm mt-2">
+              Please ensure you have granted camera and microphone permissions to this site.
+            </p>
+          )}
           <div className="mt-3 flex gap-2">
             <button 
               onClick={retryConnection}
@@ -346,12 +542,14 @@ const Agent = ({
             >
               Clear Error
             </button>
-            <button 
-              onClick={handleRetryWithNewCall}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-            >
-              Retry Call
-            </button>
+            {!vapiError.includes('not configured') && !vapiError.includes('not set') && (
+              <button 
+                onClick={handleRetryWithNewCall}
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+              >
+                Retry Call
+              </button>
+            )}
           </div>
         </div>
       )}

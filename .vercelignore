@@ -1,0 +1,22 @@
+# Exclude backend from Vercel deployment
+backend/
+backend/*
+*.py
+requirements.txt
+Procfile
+runtime.txt
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+
+# Development files
+*.log
+.DS_Store
+Thumbs.db 

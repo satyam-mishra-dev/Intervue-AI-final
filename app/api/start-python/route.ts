@@ -1,88 +1,41 @@
 import { NextResponse } from "next/server";
-import { exec } from "child_process";
-import path from "path";
+
+// Get the backend URL from environment variables
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 
 export async function POST() {
   try {
-    // Check if backend is already running
-    try {
-      const healthCheck = await fetch("http://localhost:5000/api/health", {
-        method: "GET",
-        signal: AbortSignal.timeout(2000), // 2 second timeout
-      });
-      
-      if (healthCheck.ok) {
-        const data = await healthCheck.json();
-        if (data.running) {
-          return NextResponse.json({ 
-            success: true, 
-            message: "Python backend is already running" 
-          });
-        }
-      }
-    } catch (error) {
-      // Backend is not running, continue to start it
-      console.log("Backend not running, starting new instance...");
-    }
-
-    // Ensure correct absolute path resolution
-    const scriptPath = path.join(process.cwd(), "backend", "eye_gaze.py");
-    
-    // Use python3 on Unix systems, python on Windows
-    const isWindows = process.platform === "win32";
-    const pythonCommand = isWindows ? "python" : "python3";
-    
-    // Wrap the script path in quotes to handle spaces in file paths
-    const command = `${pythonCommand} "${scriptPath}"`;
-    
-    console.log(`Starting Python backend with command: ${command}`);
-    
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error("Error starting Python script:", error);
-        return;
-      }
-      if (stderr) {
-        console.error("Python script stderr:", stderr);
-      }
-      if (stdout) {
-        console.log("Python script output:", stdout);
-      }
+    // Send start tracking command to the cloud backend
+    const response = await fetch(`${BACKEND_URL}/api/start-tracking`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "start_tracking"
+      }),
+      signal: AbortSignal.timeout(5000), // 5 second timeout
     });
 
-    // Wait a bit for the backend to start
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    // Verify the backend started successfully
-    try {
-      const healthCheck = await fetch("http://localhost:5000/api/health", {
-        method: "GET",
-        signal: AbortSignal.timeout(5000), // 5 second timeout
+    if (response.ok) {
+      const data = await response.json();
+      return NextResponse.json({ 
+        success: true, 
+        message: "Eye tracking started successfully",
+        backendUrl: BACKEND_URL
       });
-      
-      if (healthCheck.ok) {
-        const data = await healthCheck.json();
-        if (data.running) {
-          return NextResponse.json({ 
-            success: true, 
-            message: "Python backend started successfully" 
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Backend health check failed:", error);
+    } else {
+      throw new Error(`Backend responded with status: ${response.status}`);
     }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: "Python backend startup initiated (verification pending)" 
-    });
     
   } catch (err: any) {
-    console.error("Unexpected error:", err);
+    console.error("Error starting eye tracking:", err);
+    
+    // If backend is not available, return success anyway (eye tracking is optional)
     return NextResponse.json({ 
-      success: false, 
-      error: err.message 
-    }, { status: 500 });
+      success: true, 
+      message: "Eye tracking backend not available, continuing without it",
+      warning: "Eye tracking features may be limited"
+    });
   }
 }

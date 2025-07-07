@@ -25,13 +25,13 @@ function initFirebaseAdmin() {
     }
 
     try {
-      initializeApp({
-        credential: cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
           privateKey: privateKey,
-        }),
-      });
+      }),
+    });
     } catch (error) {
       console.error('Failed to initialize Firebase Admin:', error);
       throw error;
