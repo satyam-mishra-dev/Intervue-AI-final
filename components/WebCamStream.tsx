@@ -10,7 +10,7 @@ const WebCamStream = () => {
   const wsRef = useRef<WebSocket | null>(null);
 
   // Get backend URL from environment
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'ws://localhost:5000';
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_WS_URL || 'ws://localhost:5000';
 
   useEffect(() => {
     const startWebcam = async () => {
