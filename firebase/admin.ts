@@ -85,7 +85,23 @@ function formatPrivateKey(privateKey: string): string {
     formatted = formatted.replace('-----BEGIN RSA PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----');
     formatted = formatted.replace('-----END RSA PRIVATE KEY-----', '-----END PRIVATE KEY-----');
   } else {
+    // Try to detect if it's a base64 encoded key
+    try {
+      const decoded = Buffer.from(formatted, 'base64').toString('utf-8');
+      if (decoded.includes('-----BEGIN')) {
+        console.log('Detected base64 encoded private key, decoding...');
+        return formatPrivateKey(decoded);
+      }
+    } catch (e) {
+      // Not base64, continue with error
+    }
+    
     throw new Error('Invalid Firebase private key format - must start with -----BEGIN PRIVATE KEY----- or -----BEGIN RSA PRIVATE KEY-----');
+  }
+  
+  // Validate the key has proper structure
+  if (!formatted.includes('-----BEGIN PRIVATE KEY-----') || !formatted.includes('-----END PRIVATE KEY-----')) {
+    throw new Error('Private key is missing BEGIN or END markers');
   }
   
   return formatted;
@@ -102,6 +118,13 @@ try {
       throw new Error('Invalid service account: missing required fields');
     }
     
+    // Log service account info for debugging (without exposing private key)
+    console.log('Initializing Firebase Admin with:');
+    console.log('- Project ID:', serviceAccount.project_id);
+    console.log('- Client Email:', serviceAccount.client_email);
+    console.log('- Private Key Length:', serviceAccount.private_key.length);
+    console.log('- Private Key Format:', serviceAccount.private_key.includes('-----BEGIN PRIVATE KEY-----') ? 'PEM' : 'Unknown');
+    
     adminApp = initializeApp({
       credential: cert(serviceAccount),
       projectId: serviceAccount.project_id,
@@ -117,8 +140,22 @@ try {
   
   // Provide more helpful error messages
   if (error.message?.includes('DECODER routines')) {
-    console.error('Private key format error. Please check your FIREBASE_PRIVATE_KEY format.');
-    console.error('The private key should be properly formatted with newlines and quotes.');
+    console.error('❌ Private key format error detected!');
+    console.error('This usually means your FIREBASE_PRIVATE_KEY is not in the correct format.');
+    console.error('');
+    console.error('🔧 Solutions:');
+    console.error('1. Make sure your private key starts with -----BEGIN PRIVATE KEY-----');
+    console.error('2. Ensure newlines are properly formatted (use \\n in .env.local)');
+    console.error('3. Remove any extra quotes around the private key');
+    console.error('4. If using base64, ensure it\'s properly encoded');
+    console.error('');
+    console.error('📝 Example format:');
+    console.error('FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSj...\\n-----END PRIVATE KEY-----"');
+  }
+  
+  if (error.message?.includes('project_id')) {
+    console.error('❌ Project ID mismatch detected!');
+    console.error('Make sure FIREBASE_PROJECT_ID matches your Firebase project.');
   }
   
   throw error;
