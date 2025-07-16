@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 import Link from "next/link";
 import Image from "next/image";
@@ -8,7 +11,7 @@ import DisplayTechIcons from "./DisplayTechIcons";
 import { cn, getRandomInterviewCover } from "@/lib/utils";
 import { getFeedbackByInterviewId } from "@/lib/actions/general.action";
 
-const InterviewCard = async ({
+const InterviewCard = ({
   interviewId,
   userId,
   role,
@@ -16,13 +19,29 @@ const InterviewCard = async ({
   techstack,
   createdAt,
 }: InterviewCardProps) => {
-  const feedback =
-    userId && interviewId
-      ? await getFeedbackByInterviewId({
-          interviewId,
-          userId,
-        })
-      : null;
+  const [feedback, setFeedback] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const loadFeedback = async () => {
+      if (userId && interviewId && userId !== "guest") {
+        setIsLoading(true);
+        try {
+          const feedbackData = await getFeedbackByInterviewId({
+            interviewId,
+            userId,
+          });
+          setFeedback(feedbackData);
+        } catch (error) {
+          console.error("Error loading feedback:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadFeedback();
+  }, [interviewId, userId]);
 
   const normalizedType = /mix/gi.test(type) ? "Mixed" : type;
 
@@ -77,7 +96,7 @@ const InterviewCard = async ({
 
             <div className="flex flex-row gap-2 items-center">
               <Image src="/star.svg" width={22} height={22} alt="star" />
-              <p>{feedback?.totalScore || "---"}/100</p>
+              <p>{isLoading ? "Loading..." : (feedback?.totalScore || "---")}/100</p>
             </div>
           </div>
 
