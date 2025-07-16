@@ -12,6 +12,24 @@ export const sessionManager = {
     }
   },
 
+  // Clear invalid sessions via API route
+  async clearInvalidSessions(): Promise<void> {
+    try {
+      const response = await fetch('/api/auth/clear-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        console.log('Invalid sessions cleared via API');
+      }
+    } catch (error) {
+      console.error('Error clearing invalid sessions:', error);
+    }
+  },
+
   // Clear client-side storage
   clearClientStorage(): void {
     try {

@@ -4,6 +4,7 @@ import { Mona_Sans } from "next/font/google";
 
 import "./globals.css";
 import CookieClearer from "@/components/CookieClearer";
+import SessionCleaner from "@/components/SessionCleaner";
 import { GuestModeProvider } from "@/components/GuestModeProvider";
 import DebugPanel from "@/components/DebugPanel";
 
@@ -26,6 +27,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${monaSans.className} antialiased pattern`}>
         <CookieClearer />
+        <SessionCleaner />
         <GuestModeProvider>
           {children}
           <DebugPanel />

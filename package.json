@@ -9,7 +9,8 @@
     "lint": "next lint",
     "clear-sessions": "node -e \"console.log('Clear browser storage and cookies manually, then restart the dev server')\"",
     "validate-firebase": "node scripts/validate-firebase.js",
-    "check-private-key": "node scripts/check-private-key.js"
+    "check-private-key": "node scripts/check-private-key.js",
+    "check-project-mismatch": "node scripts/check-project-mismatch.js"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.1.25",

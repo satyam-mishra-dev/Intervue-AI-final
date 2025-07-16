@@ -26,9 +26,51 @@ export interface AuthResponse {
   user?: any;
 }
 
+// Simple authentication check that doesn't modify cookies
+export async function isAuthenticated(): Promise<boolean> {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
+
+    if (!sessionCookie) {
+      return false;
+    }
+
+    // Just verify the session cookie without clearing it
+    await adminAuth.verifySessionCookie(sessionCookie, true);
+    return true;
+  } catch (error: any) {
+    // Don't clear cookies here - just return false
+    console.log('Authentication check failed:', error.message);
+    return false;
+  }
+}
+
+// Get current user data (for server components)
+export async function getCurrentUser(): Promise<any> {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
+
+    if (!sessionCookie) {
+      return null;
+    }
+
+    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
+    return {
+      id: decodedClaims.uid,
+      email: decodedClaims.email,
+      name: decodedClaims.name || decodedClaims.display_name
+    };
+  } catch (error: any) {
+    console.log('Get current user failed:', error.message);
+    return null;
+  }
+}
+
+// Sign in function
 export async function signIn(email: string, password: string): Promise<AuthResponse> {
   try {
-    // Validate inputs
     if (!email || !password) {
       return {
         success: false,
@@ -43,7 +85,7 @@ export async function signIn(email: string, password: string): Promise<AuthRespo
     // Create session cookie
     const idToken = await user.getIdToken();
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn: SESSION_COOKIE_OPTIONS.maxAge * 1000, // Convert to milliseconds
+      expiresIn: SESSION_COOKIE_OPTIONS.maxAge * 1000,
     });
 
     // Set session cookie
@@ -88,9 +130,9 @@ export async function signIn(email: string, password: string): Promise<AuthRespo
   }
 }
 
+// Sign up function
 export async function signUp(email: string, password: string, displayName?: string): Promise<AuthResponse> {
   try {
-    // Validate inputs
     if (!email || !password) {
       return {
         success: false,
@@ -160,6 +202,7 @@ export async function signUp(email: string, password: string, displayName?: stri
   }
 }
 
+// Sign out function
 export async function signOut(): Promise<AuthResponse> {
   try {
     // Sign out from Firebase Auth
@@ -194,79 +237,7 @@ export async function signOut(): Promise<AuthResponse> {
   }
 }
 
-export async function getCurrentUser(): Promise<any> {
-  try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('session')?.value;
-
-    if (!sessionCookie) {
-      return null;
-    }
-
-    // Verify session cookie
-    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
-    console.log('Session verified for user:', decodedClaims.uid);
-    return decodedClaims;
-
-  } catch (error: any) {
-    console.error('Get current user error:', error);
-    
-    // Clear invalid session cookie
-    if (error.code === 'auth/session-cookie-revoked' || 
-        error.code === 'auth/session-cookie-expired' ||
-        error.message?.includes('audience') ||
-        error.message?.includes('aud')) {
-      console.log('Clearing invalid session cookie');
-      const cookieStore = await cookies();
-      cookieStore.delete('session');
-    }
-    
-    return null;
-  }
-}
-
-export async function refreshSession(): Promise<AuthResponse> {
-  try {
-    const user = auth.currentUser;
-    
-    if (!user) {
-      return {
-        success: false,
-        message: 'No user is currently signed in'
-      };
-    }
-
-    // Force token refresh
-    await user.getIdToken(true);
-    
-    // Create new session cookie
-    const idToken = await user.getIdToken();
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn: SESSION_COOKIE_OPTIONS.maxAge * 1000,
-    });
-
-    // Set new session cookie
-    const cookieStore = await cookies();
-    cookieStore.set('session', sessionCookie, SESSION_COOKIE_OPTIONS);
-
-    console.log('Session refreshed successfully');
-
-    return {
-      success: true,
-      message: 'Session refreshed successfully'
-    };
-
-  } catch (error: any) {
-    console.error('Refresh session error:', error);
-    
-    return {
-      success: false,
-      message: 'Failed to refresh session'
-    };
-  }
-}
-
-// Clear all session data (useful for fixing project ID mismatches)
+// Clear all sessions (for fixing project ID mismatches)
 export async function clearAllSessions(): Promise<void> {
   try {
     const cookieStore = await cookies();
@@ -274,24 +245,5 @@ export async function clearAllSessions(): Promise<void> {
     console.log('All sessions cleared');
   } catch (error) {
     console.error('Error clearing sessions:', error);
-  }
-}
-
-// Check if user is authenticated (for layout and other components)
-export async function isAuthenticated(): Promise<boolean> {
-  try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('session')?.value;
-
-    if (!sessionCookie) {
-      return false;
-    }
-
-    // Verify session cookie without clearing it on error
-    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
-    return !!decodedClaims;
-  } catch (error) {
-    console.error('Authentication check error:', error);
-    return false;
   }
 }
