@@ -280,8 +280,16 @@ export async function clearAllSessions(): Promise<void> {
 // Check if user is authenticated (for layout and other components)
 export async function isAuthenticated(): Promise<boolean> {
   try {
-    const user = await getCurrentUser();
-    return !!user;
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
+
+    if (!sessionCookie) {
+      return false;
+    }
+
+    // Verify session cookie without clearing it on error
+    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
+    return !!decodedClaims;
   } catch (error) {
     console.error('Authentication check error:', error);
     return false;

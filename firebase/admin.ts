@@ -71,9 +71,21 @@ function formatPrivateKey(privateKey: string): string {
   // Replace literal \n with actual newlines
   formatted = formatted.replace(/\\n/g, '\n');
   
-  // Ensure proper formatting
-  if (!formatted.includes('-----BEGIN PRIVATE KEY-----')) {
-    throw new Error('Invalid Firebase private key format - must start with -----BEGIN PRIVATE KEY-----');
+  // Handle different private key formats
+  if (formatted.includes('-----BEGIN PRIVATE KEY-----')) {
+    // Standard format - ensure proper line breaks
+    if (!formatted.includes('\n-----BEGIN PRIVATE KEY-----')) {
+      formatted = formatted.replace('-----BEGIN PRIVATE KEY-----', '\n-----BEGIN PRIVATE KEY-----');
+    }
+    if (!formatted.includes('-----END PRIVATE KEY-----\n')) {
+      formatted = formatted.replace('-----END PRIVATE KEY-----', '-----END PRIVATE KEY-----\n');
+    }
+  } else if (formatted.includes('-----BEGIN RSA PRIVATE KEY-----')) {
+    // RSA format - convert to standard format
+    formatted = formatted.replace('-----BEGIN RSA PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----');
+    formatted = formatted.replace('-----END RSA PRIVATE KEY-----', '-----END PRIVATE KEY-----');
+  } else {
+    throw new Error('Invalid Firebase private key format - must start with -----BEGIN PRIVATE KEY----- or -----BEGIN RSA PRIVATE KEY-----');
   }
   
   return formatted;
@@ -85,6 +97,11 @@ try {
   if (!getApps().length) {
     const serviceAccount = getServiceAccount();
     
+    // Validate service account before initializing
+    if (!serviceAccount.project_id || !serviceAccount.client_email || !serviceAccount.private_key) {
+      throw new Error('Invalid service account: missing required fields');
+    }
+    
     adminApp = initializeApp({
       credential: cert(serviceAccount),
       projectId: serviceAccount.project_id,
@@ -95,8 +112,15 @@ try {
     adminApp = getApps()[0];
     console.log('Firebase Admin already initialized');
   }
-} catch (error) {
+} catch (error: any) {
   console.error('Firebase Admin initialization error:', error);
+  
+  // Provide more helpful error messages
+  if (error.message?.includes('DECODER routines')) {
+    console.error('Private key format error. Please check your FIREBASE_PRIVATE_KEY format.');
+    console.error('The private key should be properly formatted with newlines and quotes.');
+  }
+  
   throw error;
 }
 
