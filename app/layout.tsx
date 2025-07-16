@@ -4,6 +4,7 @@ import { Mona_Sans } from "next/font/google";
 
 import "./globals.css";
 import CookieClearer from "@/components/CookieClearer";
+import { GuestModeProvider } from "@/components/GuestModeProvider";
 
 const monaSans = Mona_Sans({
   variable: "--font-mona-sans",
@@ -24,8 +25,9 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${monaSans.className} antialiased pattern`}>
         <CookieClearer />
-        {children}
-
+        <GuestModeProvider>
+          {children}
+        </GuestModeProvider>
         <Toaster />
       </body>
     </html>

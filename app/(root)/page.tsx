@@ -10,136 +10,26 @@ import {
   getLatestInterviews,
 } from "@/lib/actions/general.action";
 
+import HomePage from "@/components/HomePage";
+
 async function Home() {
   const user = await getCurrentUser();
 
   // Debug logging
   console.log("Home page - User:", user ? { id: user.id, email: user.email } : "No user");
 
-  // Handle case where user is not authenticated
-  if (!user || !user.id) {
-    console.log("Home page - Redirecting to sign-in (no user)");
-    // Return a simplified view for unauthenticated users
-    return (
-      <>
-        <section className="card-cta">
-          <div className="flex flex-col gap-6 max-w-lg">
-            <h2>Get Interview-Ready with AI-Powered Practice & Feedback</h2>
-            <p className="text-lg">
-              Practice real interview questions & get instant feedback
-            </p>
+  // If user is authenticated, get their data
+  let userInterviews = null;
+  let allInterview = null;
 
-            <Button asChild className="btn-primary max-sm:w-full">
-              <Link href="/sign-in">Sign In to Start</Link>
-            </Button>
-          </div>
-
-          <Image
-            src="/robot.png"
-            alt="robo-dude"
-            width={400}
-            height={400}
-            className="max-sm:hidden"
-          />
-        </section>
-      </>
-    );
+  if (user && user.id) {
+    [userInterviews, allInterview] = await Promise.all([
+      getInterviewsByUserId(user.id),
+      getLatestInterviews({ userId: user.id }),
+    ]);
   }
 
-  const [userInterviews, allInterview] = await Promise.all([
-    getInterviewsByUserId(user.id),
-    getLatestInterviews({ userId: user.id }),
-  ]);
-
-  const hasPastInterviews = userInterviews?.length! > 0;
-  const hasUpcomingInterviews = allInterview?.length! > 0;
-
-  return (
-    <>
-      <section className="card-cta">
-        <div className="flex flex-col gap-6 max-w-lg">
-          <h2>Get Interview-Ready with AI-Powered Practice & Feedback</h2>
-          <p className="text-lg">
-            Practice real interview questions & get instant feedback
-          </p>
-
-          <Button asChild className="btn-primary max-sm:w-full">
-            <Link href="/interview">Start an Interview</Link>
-          </Button>
-        </div>
-
-        <Image
-          src="/robot.png"
-          alt="robo-dude"
-          width={400}
-          height={400}
-          className="max-sm:hidden"
-        />
-      </section>
-
-      <section className="flex flex-col gap-6 mt-8">
-        <h2>Your Interviews</h2>
-
-        <div className="interviews-section">          {hasPastInterviews ? (
-            userInterviews?.map((interview) => (
-              <InterviewCard
-                key={interview.id}
-                userId={user?.id}
-                interviewId={interview.id}
-                role={interview.role}
-                type={interview.type}
-                techstack={interview.techstack}
-                createdAt={interview.createdAt}
-              />
-            ))
-          ) : (
-            dummyInterviews?.map((interview) => (
-              <InterviewCard
-                key={interview.id}
-                userId={user?.id}
-                interviewId={interview.id}
-                role={interview.role}
-                type={interview.type}
-                techstack={interview.techstack}
-                createdAt={interview.createdAt}
-              />
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-6 mt-8">
-        <h2>Take Interviews</h2>
-
-        <div className="interviews-section">
-          {hasUpcomingInterviews ? (
-            allInterview?.map((interview) => (
-              <InterviewCard
-                key={interview.id}
-                userId={user?.id}
-                interviewId={interview.id}
-                role={interview.role}
-                type={interview.type}
-                techstack={interview.techstack}
-                createdAt={interview.createdAt}
-              />
-            ))
-          ) : (            dummyInterviews?.map((interview) => (
-              <InterviewCard
-                key={interview.id}
-                userId={user?.id}
-                interviewId={interview.id}
-                role={interview.role}
-                type={interview.type}
-                techstack={interview.techstack}
-                createdAt={interview.createdAt}
-              />
-            ))
-          )}
-        </div>
-      </section>
-    </>
-  );
+  return <HomePage user={user} userInterviews={userInterviews} allInterview={allInterview} />;
 }
 
 export default Home;
