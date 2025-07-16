@@ -1,9 +1,9 @@
 import Image from "next/image";
 
-import { cn, getTechLogos } from "@/lib/utils";
+import { cn, getTechLogosSync } from "@/lib/utils";
 
-const DisplayTechIcons = async ({ techStack }: TechIconProps) => {
-  const techIcons = await getTechLogos(techStack);
+const DisplayTechIcons = ({ techStack }: TechIconProps) => {
+  const techIcons = getTechLogosSync(techStack);
 
   return (
     <div className="flex flex-row">

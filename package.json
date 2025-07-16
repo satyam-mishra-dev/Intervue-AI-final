@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clear-sessions": "node -e \"console.log('Clear browser storage and cookies manually, then restart the dev server')\"",
+    "validate-firebase": "node scripts/validate-firebase.js"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.1.25",

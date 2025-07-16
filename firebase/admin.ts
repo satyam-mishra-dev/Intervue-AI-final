@@ -1,88 +1,108 @@
-import { initializeApp, getApps, cert } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
-import { validateFirebaseConfig, formatPrivateKey, FIREBASE_CONFIG } from "@/lib/firebase-config";
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin SDK
-function initFirebaseAdmin() {
-  const apps = getApps();
+// Function to safely parse service account credentials
+function getServiceAccount() {
+  // Try multiple environment variable formats for flexibility
+  const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || 
+                              process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+  
+  const projectId = process.env.FIREBASE_PROJECT_ID || 
+                   process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-  if (!apps.length) {
-    // Validate Firebase configuration
-    const configValidation = validateFirebaseConfig();
-    
-    if (!configValidation.isValid) {
-      console.error('Firebase configuration validation failed:');
-      configValidation.errors.forEach(error => console.error('-', error));
-      
-      // In development, allow the app to continue without Firebase Admin
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Firebase Admin failed to initialize, but continuing in development mode');
-        return {
-          auth: null,
-          db: null,
-        };
-      }
-      
-      throw new Error(`Firebase configuration errors: ${configValidation.errors.join(', ')}`);
-    }
+  // If we have individual credentials, use them
+  if (projectId && clientEmail && privateKey) {
+    return {
+      project_id: projectId,
+      client_email: clientEmail,
+      private_key: formatPrivateKey(privateKey)
+    };
+  }
 
-    const { projectId, clientEmail, privateKey } = FIREBASE_CONFIG.admin;
-
+  // If we have service account JSON string
+  if (serviceAccountString) {
     try {
-      // Format the private key properly
-      const formattedPrivateKey = formatPrivateKey(privateKey!);
+      let serviceAccount;
       
-      // Log configuration for debugging (only in development)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Firebase Admin Project ID:', projectId);
-        console.log('Firebase Client Project ID:', FIREBASE_CONFIG.client.projectId);
-        console.log('Firebase configuration is valid');
+      // Check if it's base64 encoded
+      if (serviceAccountString.startsWith('{')) {
+        // Direct JSON string
+        serviceAccount = JSON.parse(serviceAccountString);
+      } else {
+        // Base64 encoded JSON
+        const decoded = Buffer.from(serviceAccountString, 'base64').toString('utf-8');
+        serviceAccount = JSON.parse(decoded);
       }
 
-      initializeApp({
-        credential: cert({
-          projectId: projectId!,
-          clientEmail: clientEmail!,
-          privateKey: formattedPrivateKey,
-        }),
-      });
-      
-      console.log('Firebase Admin SDK initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize Firebase Admin:', error);
-      
-      // In development, allow the app to continue without Firebase Admin
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Firebase Admin failed to initialize, but continuing in development mode');
-        return {
-          auth: null,
-          db: null,
-        };
+      // Validate required fields
+      const requiredFields = ['project_id', 'private_key', 'client_email'];
+      for (const field of requiredFields) {
+        if (!serviceAccount[field]) {
+          throw new Error(`Service account is missing required field: ${field}`);
+        }
       }
+
+      // Format private key
+      serviceAccount.private_key = formatPrivateKey(serviceAccount.private_key);
       
-      throw error;
+      return serviceAccount;
+    } catch (error) {
+      console.error('Error parsing service account:', error);
+      throw new Error('Invalid service account format');
     }
   }
 
-  return {
-    auth: getAuth(),
-    db: getFirestore(),
-  };
+  throw new Error('No Firebase service account credentials found. Please set FIREBASE_SERVICE_ACCOUNT_KEY or individual credentials (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY)');
 }
 
-let firebaseAdmin: { auth: any; db: any } | null = null;
-
-try {
-  firebaseAdmin = initFirebaseAdmin();
-} catch (error) {
-  console.error('Firebase Admin initialization failed:', error);
-  // In production, we might want to throw this error
-  // For now, we'll allow the app to continue in guest mode
-  if (process.env.NODE_ENV === 'production') {
-    console.error('Firebase Admin is required in production');
+// Format private key properly
+function formatPrivateKey(privateKey: string): string {
+  if (!privateKey) {
+    throw new Error('Private key is required');
   }
+  
+  // Remove quotes if present
+  let formatted = privateKey.replace(/^["']|["']$/g, '');
+  
+  // Replace literal \n with actual newlines
+  formatted = formatted.replace(/\\n/g, '\n');
+  
+  // Ensure proper formatting
+  if (!formatted.includes('-----BEGIN PRIVATE KEY-----')) {
+    throw new Error('Invalid Firebase private key format - must start with -----BEGIN PRIVATE KEY-----');
+  }
+  
+  return formatted;
 }
 
-export const auth = firebaseAdmin?.auth || null;
-export const db = firebaseAdmin?.db || null;
+// Initialize Firebase Admin
+let adminApp;
+try {
+  if (!getApps().length) {
+    const serviceAccount = getServiceAccount();
+    
+    adminApp = initializeApp({
+      credential: cert(serviceAccount),
+      projectId: serviceAccount.project_id,
+    });
+    
+    console.log('Firebase Admin initialized successfully with project:', serviceAccount.project_id);
+  } else {
+    adminApp = getApps()[0];
+    console.log('Firebase Admin already initialized');
+  }
+} catch (error) {
+  console.error('Firebase Admin initialization error:', error);
+  throw error;
+}
+
+export const adminAuth = getAuth(adminApp);
+export const adminDb = getFirestore(adminApp);
+export { adminApp };
+
+// For backward compatibility
+export const db = adminDb;

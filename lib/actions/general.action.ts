@@ -3,7 +3,7 @@
 import { generateObject } from "ai";
 import { google } from "@ai-sdk/google";
 
-import { db } from "@/firebase/admin";
+import { adminDb } from "@/firebase/admin";
 import { feedbackSchema } from "@/constants";
 
 export async function createFeedback(params: CreateFeedbackParams) {
@@ -52,9 +52,9 @@ export async function createFeedback(params: CreateFeedbackParams) {
     let feedbackRef;
 
     if (feedbackId) {
-      feedbackRef = db.collection("feedback").doc(feedbackId);
+      feedbackRef = adminDb.collection("feedback").doc(feedbackId);
     } else {
-      feedbackRef = db.collection("feedback").doc();
+      feedbackRef = adminDb.collection("feedback").doc();
     }
 
     await feedbackRef.set(feedback);
@@ -67,7 +67,7 @@ export async function createFeedback(params: CreateFeedbackParams) {
 }
 
 export async function getInterviewById(id: string): Promise<Interview | null> {
-  if (!db) {
+  if (!adminDb) {
     console.log("Database not available");
     return null;
   }
@@ -79,7 +79,7 @@ export async function getInterviewById(id: string): Promise<Interview | null> {
   }
 
   try {
-    const interview = await db.collection("interviews").doc(id).get();
+    const interview = await adminDb.collection("interviews").doc(id).get();
     return interview.data() as Interview | null;
   } catch (error) {
     console.error("Error fetching interview:", error);
@@ -99,7 +99,7 @@ export async function getFeedbackByInterviewId(
   }
 
   try {
-    const querySnapshot = await db
+    const querySnapshot = await adminDb
       .collection("feedback")
       .where("interviewId", "==", interviewId)
       .where("userId", "==", userId)
@@ -119,7 +119,7 @@ export async function getFeedbackByInterviewId(
 export async function getLatestInterviews(
   params: GetLatestInterviewsParams
 ): Promise<Interview[] | null> {
-  if (!db) {
+  if (!adminDb) {
     console.log("Database not available");
     return [];
   }
@@ -133,7 +133,7 @@ export async function getLatestInterviews(
   }
 
   try {
-    const interviews = await db
+    const interviews = await adminDb
       .collection("interviews")
       .orderBy("createdAt", "desc")
       .where("finalized", "==", true)
@@ -154,7 +154,7 @@ export async function getLatestInterviews(
 export async function getInterviewsByUserId(
   userId: string
 ): Promise<Interview[] | null> {
-  if (!db) {
+  if (!adminDb) {
     console.log("Database not available");
     return [];
   }
@@ -166,7 +166,7 @@ export async function getInterviewsByUserId(
   }
 
   try {
-    const interviews = await db
+    const interviews = await adminDb
       .collection("interviews")
       .where("userId", "==", userId)
       .orderBy("createdAt", "desc")
@@ -207,7 +207,7 @@ export async function createDemoInterview(userId: string) {
       createdAt: new Date().toISOString(),
     };
 
-    const docRef = await db.collection("interviews").add(demoInterview);
+    const docRef = await adminDb.collection("interviews").add(demoInterview);
     
     return { 
       success: true, 

@@ -28,8 +28,8 @@ export default function RootLayout({
         <CookieClearer />
         <GuestModeProvider>
           {children}
+          <DebugPanel />
         </GuestModeProvider>
-        <DebugPanel />
         <Toaster />
       </body>
     </html>

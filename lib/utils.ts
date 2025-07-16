@@ -46,6 +46,22 @@ export const getTechLogos = async (techArray: string[] = []) => {
   return results;
 };
 
+// Synchronous version for client components
+export const getTechLogosSync = (techArray: string[] = []) => {
+  if (!Array.isArray(techArray)) {
+    console.warn("Invalid input: techArray must be an array. Defaulting to an empty array.");
+    techArray = [];
+  }
+
+  return techArray.map((tech) => {
+    const normalized = normalizeTechName(tech);
+    return {
+      tech,
+      url: `${techIconBaseURL}/${normalized}/${normalized}-original.svg`,
+    };
+  });
+};
+
 export const getRandomInterviewCover = () => {
   const randomIndex = Math.floor(Math.random() * interviewCovers.length);
   return `/covers${interviewCovers[randomIndex]}`;

@@ -1,49 +1,71 @@
-import { cookies } from "next/headers";
+// Session management utilities
+import { clearAllSessions } from './actions/auth.action';
 
-// Session cookie management
-export class SessionManager {
-  static async clearSessionCookies() {
-    const cookieStore = await cookies();
-    
-    // Clear all possible session cookies
-    cookieStore.delete("session");
-    cookieStore.delete("firebase-session");
-    cookieStore.delete("auth-session");
-    
-    console.log("Session cookies cleared");
-  }
-
-  static async getSessionCookie() {
-    const cookieStore = await cookies();
-    return cookieStore.get("session")?.value;
-  }
-
-  static async setSessionCookie(sessionCookie: string, maxAge: number = 60 * 60 * 24 * 7) {
-    const cookieStore = await cookies();
-    
-    cookieStore.set("session", sessionCookie, {
-      maxAge,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      sameSite: "lax",
-    });
-  }
-
-  static async validateSession() {
-    const sessionCookie = await this.getSessionCookie();
-    
-    if (!sessionCookie) {
-      return { isValid: false, reason: "No session cookie" };
+export const sessionManager = {
+  // Clear all session data (useful for fixing project ID mismatches)
+  async clearAllSessions(): Promise<void> {
+    try {
+      await clearAllSessions();
+      console.log('All sessions cleared successfully');
+    } catch (error) {
+      console.error('Error clearing sessions:', error);
     }
+  },
 
-    // Additional validation can be added here
-    return { isValid: true };
+  // Clear client-side storage
+  clearClientStorage(): void {
+    try {
+      // Clear localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear all cookies
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c
+            .replace(/^ +/, "")
+            .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+        
+        console.log('Client storage cleared successfully');
+      }
+    } catch (error) {
+      console.error('Error clearing client storage:', error);
+    }
+  },
+
+  // Clear everything (both server and client)
+  async clearEverything(): Promise<void> {
+    await this.clearAllSessions();
+    this.clearClientStorage();
+    console.log('All session data cleared (server and client)');
   }
-}
+};
 
-// Client-side session utilities
+// Client-side session utilities (for use in components)
 export const clientSessionUtils = {
+  clearAllSessions: sessionManager.clearClientStorage,
+  
+  // Check if user is authenticated on client side
+  isAuthenticated(): boolean {
+    if (typeof window === 'undefined') return false;
+    
+    // Check for any auth-related data
+    const hasAuthData = localStorage.getItem('firebase:authUser:') || 
+                       sessionStorage.getItem('firebase:authUser:') ||
+                       document.cookie.includes('session');
+    
+    return !!hasAuthData;
+  },
+  
+  // Force reload to clear any cached auth state
+  forceReload(): void {
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
+  },
+  
+  // Guest mode utilities
   clearGuestMode() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem("guestMode");
@@ -63,22 +85,5 @@ export const clientSessionUtils = {
       return localStorage.getItem("guestMode") === "true";
     }
     return false;
-  },
-
-  clearAllSessions() {
-    if (typeof window !== 'undefined') {
-      // Clear localStorage
-      localStorage.removeItem("guestMode");
-      
-      // Clear sessionStorage
-      sessionStorage.clear();
-      
-      // Clear cookies (client-side)
-      document.cookie = "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      document.cookie = "firebase-session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      document.cookie = "auth-session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      
-      console.log("All client-side sessions cleared");
-    }
   }
 }; 
