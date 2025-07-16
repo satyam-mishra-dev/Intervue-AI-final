@@ -117,8 +117,19 @@ export async function getCurrentUser(): Promise<User | null> {
       ...userRecord.data(),
       id: userRecord.id,
     } as User;
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    console.error("Session verification error:", error);
+    
+    // Log specific error details for debugging
+    if (error.code === 'auth/session-cookie-revoked') {
+      console.error("Session cookie was revoked");
+    } else if (error.code === 'auth/session-cookie-expired') {
+      console.error("Session cookie has expired");
+    } else if (error.message && error.message.includes('audience')) {
+      console.error("Firebase project ID mismatch detected");
+      console.error("Expected project ID:", process.env.FIREBASE_PROJECT_ID);
+      console.error("Session cookie project ID:", error.message);
+    }
 
     // Invalid or expired session
     return null;

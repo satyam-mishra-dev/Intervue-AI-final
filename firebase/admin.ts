@@ -24,6 +24,20 @@ function initFirebaseAdmin() {
       }
     }
 
+    // Log project IDs for debugging (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Firebase Admin Project ID:', process.env.FIREBASE_PROJECT_ID);
+      console.log('Firebase Client Project ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+    }
+
+    // Validate that both project IDs match
+    if (process.env.FIREBASE_PROJECT_ID !== process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+      console.error('Firebase project ID mismatch!');
+      console.error('Admin Project ID:', process.env.FIREBASE_PROJECT_ID);
+      console.error('Client Project ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+      throw new Error('Firebase project ID mismatch between client and admin configurations');
+    }
+
     try {
     initializeApp({
       credential: cert({
