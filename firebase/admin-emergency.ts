@@ -207,4 +207,4 @@ export const adminDb = adminApp ? getFirestore(adminApp) : null;
 export { adminApp };
 
 // For backward compatibility
-export const db = adminDb;
+export const db = adminDb; 
