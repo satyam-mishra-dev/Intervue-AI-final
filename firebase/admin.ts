@@ -1,63 +1,54 @@
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { validateFirebaseConfig, formatPrivateKey, FIREBASE_CONFIG } from "@/lib/firebase-config";
 
 // Initialize Firebase Admin SDK
 function initFirebaseAdmin() {
   const apps = getApps();
 
   if (!apps.length) {
-    // Check if all required environment variables are present
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-    if (!projectId || !clientEmail || !privateKey) {
-      console.error('Missing Firebase Admin environment variables:');
-      console.error('FIREBASE_PROJECT_ID:', !!projectId);
-      console.error('FIREBASE_CLIENT_EMAIL:', !!clientEmail);
-      console.error('FIREBASE_PRIVATE_KEY:', !!privateKey);
-      throw new Error('Missing Firebase Admin environment variables');
-    }
-
-    // Format the private key properly
-    if (privateKey) {
-      // Remove quotes if present
-      privateKey = privateKey.replace(/^["']|["']$/g, '');
+    // Validate Firebase configuration
+    const configValidation = validateFirebaseConfig();
+    
+    if (!configValidation.isValid) {
+      console.error('Firebase configuration validation failed:');
+      configValidation.errors.forEach(error => console.error('-', error));
       
-      // Replace literal \n with actual newlines
-      privateKey = privateKey.replace(/\\n/g, '\n');
-      
-      // Ensure the key starts and ends properly
-      if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-        console.error('Invalid Firebase private key format');
-        console.error('Private key should start with: -----BEGIN PRIVATE KEY-----');
-        throw new Error('Invalid Firebase private key format');
+      // In development, allow the app to continue without Firebase Admin
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Firebase Admin failed to initialize, but continuing in development mode');
+        return {
+          auth: null,
+          db: null,
+        };
       }
+      
+      throw new Error(`Firebase configuration errors: ${configValidation.errors.join(', ')}`);
     }
 
-    // Log project IDs for debugging (only in development)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Firebase Admin Project ID:', projectId);
-      console.log('Firebase Client Project ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
-    }
-
-    // Validate that both project IDs match
-    if (projectId !== process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-      console.error('Firebase project ID mismatch!');
-      console.error('Admin Project ID:', projectId);
-      console.error('Client Project ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
-      throw new Error('Firebase project ID mismatch between client and admin configurations');
-    }
+    const { projectId, clientEmail, privateKey } = FIREBASE_CONFIG.admin;
 
     try {
+      // Format the private key properly
+      const formattedPrivateKey = formatPrivateKey(privateKey!);
+      
+      // Log configuration for debugging (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Firebase Admin Project ID:', projectId);
+        console.log('Firebase Client Project ID:', FIREBASE_CONFIG.client.projectId);
+        console.log('Firebase configuration is valid');
+      }
+
       initializeApp({
         credential: cert({
-          projectId: projectId,
-          clientEmail: clientEmail,
-          privateKey: privateKey,
+          projectId: projectId!,
+          clientEmail: clientEmail!,
+          privateKey: formattedPrivateKey,
         }),
       });
+      
+      console.log('Firebase Admin SDK initialized successfully');
     } catch (error) {
       console.error('Failed to initialize Firebase Admin:', error);
       

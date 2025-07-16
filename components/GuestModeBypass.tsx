@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGuestMode } from "./GuestModeProvider";
+import { clientSessionUtils } from "@/lib/session-manager";
 
 interface GuestModeBypassProps {
   children: React.ReactNode;
@@ -16,25 +17,29 @@ export default function GuestModeBypass({ children, isAuthenticated }: GuestMode
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated or in guest mode
-    const guestModeEnabled = localStorage.getItem("guestMode") === "true";
-    
-    // Allow access if authenticated, in guest mode, or if authentication check failed
-    if (isAuthenticated || guestModeEnabled) {
-      setShouldRender(true);
-    } else {
-      // Only redirect if we're sure the user is not authenticated and not in guest mode
-      // Add a small delay to allow guest mode to be set
-      const timeoutId = setTimeout(() => {
-        const guestModeEnabled = localStorage.getItem("guestMode") === "true";
-        if (!guestModeEnabled) {
-          router.push("/sign-in");
-        }
-      }, 100);
+    const checkAccess = () => {
+      // Check if user is authenticated or in guest mode
+      const guestModeEnabled = clientSessionUtils.isGuestMode();
       
-      return () => clearTimeout(timeoutId);
-    }
-    setIsChecking(false);
+      console.log("GuestModeBypass - isAuthenticated:", isAuthenticated);
+      console.log("GuestModeBypass - isGuestMode:", isGuestMode);
+      console.log("GuestModeBypass - guestModeEnabled:", guestModeEnabled);
+      
+      // Allow access if authenticated, in guest mode, or if authentication check failed
+      if (isAuthenticated || guestModeEnabled) {
+        console.log("GuestModeBypass - Access granted");
+        setShouldRender(true);
+        setIsChecking(false);
+      } else {
+        console.log("GuestModeBypass - Access denied, redirecting to sign-in");
+        router.push("/sign-in");
+      }
+    };
+
+    // Add a small delay to ensure all state is properly initialized
+    const timeoutId = setTimeout(checkAccess, 50);
+    
+    return () => clearTimeout(timeoutId);
   }, [isAuthenticated, isGuestMode, router]);
 
   // Show loading state while checking
@@ -43,7 +48,7 @@ export default function GuestModeBypass({ children, isAuthenticated }: GuestMode
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-2">Loading...</p>
+          <p className="mt-2">Checking access...</p>
         </div>
       </div>
     );

@@ -5,6 +5,7 @@ import { Mona_Sans } from "next/font/google";
 import "./globals.css";
 import CookieClearer from "@/components/CookieClearer";
 import { GuestModeProvider } from "@/components/GuestModeProvider";
+import DebugPanel from "@/components/DebugPanel";
 
 const monaSans = Mona_Sans({
   variable: "--font-mona-sans",
@@ -28,6 +29,7 @@ export default function RootLayout({
         <GuestModeProvider>
           {children}
         </GuestModeProvider>
+        <DebugPanel />
         <Toaster />
       </body>
     </html>
