@@ -67,6 +67,11 @@ export async function createFeedback(params: CreateFeedbackParams) {
 }
 
 export async function getInterviewById(id: string): Promise<Interview | null> {
+  if (!db) {
+    console.log("Database not available");
+    return null;
+  }
+
   // Validate the ID parameter
   if (!id || typeof id !== 'string' || id.trim() === '') {
     console.log("Invalid interview ID:", id);
@@ -114,6 +119,11 @@ export async function getFeedbackByInterviewId(
 export async function getLatestInterviews(
   params: GetLatestInterviewsParams
 ): Promise<Interview[] | null> {
+  if (!db) {
+    console.log("Database not available");
+    return [];
+  }
+
   const { userId, limit = 20 } = params;
 
   // Validate userId to prevent undefined values in Firestore queries
@@ -131,7 +141,7 @@ export async function getLatestInterviews(
       .limit(limit)
       .get();
 
-    return interviews.docs.map((doc) => ({
+    return interviews.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data(),
     })) as Interview[];
@@ -144,6 +154,11 @@ export async function getLatestInterviews(
 export async function getInterviewsByUserId(
   userId: string
 ): Promise<Interview[] | null> {
+  if (!db) {
+    console.log("Database not available");
+    return [];
+  }
+
   // Validate userId to prevent undefined values in Firestore queries
   if (!userId || typeof userId !== 'string' || userId.trim() === '') {
     console.log("Invalid userId for getInterviewsByUserId:", userId);
@@ -157,7 +172,7 @@ export async function getInterviewsByUserId(
       .orderBy("createdAt", "desc")
       .get();
 
-    return interviews.docs.map((doc) => ({
+    return interviews.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data(),
     })) as Interview[];

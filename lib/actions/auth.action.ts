@@ -8,6 +8,10 @@ const SESSION_DURATION = 60 * 60 * 24 * 7;
 
 // Set session cookie
 export async function setSessionCookie(idToken: string) {
+  if (!auth) {
+    throw new Error('Firebase Admin not initialized');
+  }
+
   const cookieStore = await cookies();
 
   // Create session cookie
@@ -26,6 +30,13 @@ export async function setSessionCookie(idToken: string) {
 }
 
 export async function signUp(params: SignUpParams) {
+  if (!db) {
+    return {
+      success: false,
+      message: "Database not available. Please try again later.",
+    };
+  }
+
   const { uid, name, email } = params;
 
   try {
@@ -68,6 +79,13 @@ export async function signUp(params: SignUpParams) {
 }
 
 export async function signIn(params: SignInParams) {
+  if (!auth) {
+    return {
+      success: false,
+      message: "Authentication service not available. Please try again later.",
+    };
+  }
+
   const { email, idToken } = params;
 
   try {
@@ -103,6 +121,10 @@ export async function signOut() {
 
 // Get current user from session cookie
 export async function getCurrentUser(): Promise<User | null> {
+  if (!auth || !db) {
+    return null;
+  }
+
   const cookieStore = await cookies();
 
   const sessionCookie = cookieStore.get("session")?.value;
