@@ -13,8 +13,12 @@ import {
 async function Home() {
   const user = await getCurrentUser();
 
+  // Debug logging
+  console.log("Home page - User:", user ? { id: user.id, email: user.email } : "No user");
+
   // Handle case where user is not authenticated
   if (!user || !user.id) {
+    console.log("Home page - Redirecting to sign-in (no user)");
     // Return a simplified view for unauthenticated users
     return (
       <>

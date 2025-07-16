@@ -81,13 +81,19 @@ const AuthForm = ({ type }: { type: FormType }) => {
           return;
         }
 
-        await signIn({
+        const result = await signIn({
           email,
           idToken,
         });
 
+        if (!result.success) {
+          toast.error(result.message);
+          return;
+        }
+
         toast.success("Signed in successfully.");
-        router.push("/");
+        // Force a hard refresh to ensure the session is properly loaded
+        window.location.href = "/";
       }
     } catch (error) {
       console.log(error);
