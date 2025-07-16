@@ -60,6 +60,16 @@ function initFirebaseAdmin() {
       });
     } catch (error) {
       console.error('Failed to initialize Firebase Admin:', error);
+      
+      // In development, allow the app to continue without Firebase Admin
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Firebase Admin failed to initialize, but continuing in development mode');
+        return {
+          auth: null,
+          db: null,
+        };
+      }
+      
       throw error;
     }
   }

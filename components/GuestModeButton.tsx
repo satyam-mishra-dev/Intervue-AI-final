@@ -14,8 +14,8 @@ export default function GuestModeButton() {
     // Set a guest mode flag in localStorage
     localStorage.setItem("guestMode", "true");
     
-    // Redirect to the main dashboard
-    router.push("/");
+    // Force a page reload to ensure the guest mode is properly detected
+    window.location.href = "/";
   };
 
   return (
