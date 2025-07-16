@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-import { cn } from "../lib/utils";
+import { cn } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
 import { interviewer, dummyInterviews } from "@/constants";
 import { createFeedback } from "@/lib/actions/general.action";
